@@ -1,0 +1,32 @@
+{
+  "name": "dsh-skills-manager",
+  "version": "1.0.0",
+  "description": "DSH dynamic Cordis plugin: lists every installed skill and lets you mark which skills must be used for your prompts.",
+  "type": "module",
+  "main": "src/host.js",
+  "exports": {
+    ".": "./src/host.js",
+    "./host": "./src/host.js",
+    "./client": "./src/client.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "skills",
+    "agent"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "echo \"No test suite yet — see docs/testing.md\" && exit 0"
+  }
+}
