@@ -12,7 +12,8 @@
   "files": [
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "package-lock.json"
   ],
   "keywords": [
     "dsh",
