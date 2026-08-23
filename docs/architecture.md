@@ -13,6 +13,8 @@ The plugin is split across two runtime planes:
 │  · Registers a "Skills" page in Settings (slot `settings.section`)        │
 │  · Renders the skill list + checkboxes + filter (React, no JSX)           │
 │  · Reads the current sessionId from the slot's `useSessions` prop         │
+│  · Grouping (source/provider) + sorting (name/required-first)             │
+│  · Availability badges + import/export UI                                 │
 │  · Talks to the host via host.call(method, args)                          │
 └──────────────────────────────────┬────────────────────────────────────────┘
                                    │  JSON RPC (Client → Host)
@@ -21,8 +23,10 @@ The plugin is split across two runtime planes:
 │  · Reads the live skill registry (ctx.get('skills'))                      │
 │  · Resolves the agent for the sessionId (ctx.agents.get(id))              │
 │  · Passes that agent as the viewing `scope` to skills.list()              │
-│  · Keeps the "required for prompts" set in memory                         │
-│  · Handlers: list-skills · get-required · set-required                    │
+│  · Persists the "required for prompts" set to a JSON file (durable)       │
+│  · Registers the `check_required_skills` model tool (agent enforcement)   │
+│  · Handlers: list-skills · get-required · set-required · check-required   │
+│              export-required · import-required                            │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -38,24 +42,36 @@ the exact mechanism the built-in `skill` tool uses to produce the catalog.
 
 ## The RPC surface
 
-| method         | args                    | returns                       |
-|----------------|-------------------------|-------------------------------|
-| `list-skills`  | `{ sessionId }`         | `[{ name, description }, ...]`|
-| `get-required` | —                       | `[skillName, ...]`            |
-| `set-required` | `[skillName, ...]`      | `[skillName, ...]`            |
+| method            | args                    | returns                                          |
+|-------------------|-------------------------|--------------------------------------------------|
+| `list-skills`     | `{ sessionId }`         | `[{ name, description, source, provider, modelInvocable, userInvocable }, ...]` |
+| `get-required`    | `{ sessionId }`         | `[skillName, ...]`                                |
+| `set-required`    | `{ sessionId, names }`  | `[skillName, ...]`                                |
+| `check-required`  | `{ sessionId }`         | `{ required, available, missing }`                |
+| `export-required` | `{ sessionId }`         | JSON string of the required list                  |
+| `import-required` | `{ sessionId, json }`   | `[skillName, ...]`                                |
+
+## Agent-side enforcement tool
+
+The host registers a model tool named **`check_required_skills`** via
+`harness.defineTool` + `harness.registerTool`. The agent can call it to see
+which required skills are loaded for the current turn. It resolves the scope
+from `exec.agent` (the reliable scope inside a tool call) rather than the
+initiator, which is undefined in host RPC handlers.
 
 ## Lifecycle & persistence
 
-- **Dynamic & transient.** The "required" set lives in the Host process's
-  memory for the life of the plugin activation. It does **not** persist across
-  a DSH restart.
-- To make the required set durable, wire it to a persistent `settings`
-  namespace or a file via a Host service (see `docs/roadmap.md`).
+- **Durable.** The "required" set is persisted to
+  `.dsh/skills-manager.json` in the session workspace via the `fs` service, so
+  it survives DSH restarts. It is loaded lazily on first read and written on
+  every change.
+- **Dynamic.** The plugin itself is a dynamic package: it does not survive a DSH
+  restart and must be re-activated (the persisted required set does survive).
 
 ## Constraints honored
 
 - Plain JavaScript only (no TypeScript, JSX, or `import` in the sandbox halves;
   the `.js` exports here are the maintainable source, and the DSH authoring flow
   consumes the two halves' bodies directly).
-- All side effects are fiber-scoped: slots, styles, and handlers are torn down
-  on stop/update/undefine.
+- All side effects are fiber-scoped: slots, styles, handlers, and the registered
+  tool are torn down on stop/update/undefine.

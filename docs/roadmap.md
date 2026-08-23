@@ -1,36 +1,30 @@
 # Roadmap
 
-Possible follow-ups, roughly ordered by value.
+Status of the originally planned follow-ups.
 
-## 1. Durable "required" set (recommended)
-The current required-set lives only in the Host process's memory and is lost on
-DSH restart. Make it survive by persisting it:
+## Implemented ✅
 
-- **Option A — settings namespace.** Use a persistent `settings` service to
-  store `{ plugin: 'dsh-skills-manager', key: 'requiredSkills', value: [...] }`.
-- **Option B — a file.** Write the set to a JSON file under the session
-  workspace and read it back on load.
+1. **Durable "required" set** — persisted to `.dsh/skills-manager.json` in the
+   session workspace via the `fs` service; survives DSH restarts.
+2. **Agent-side enforcement** — a model tool `check_required_skills` lets the
+   agent verify which required skills are loaded for the current turn.
+3. **Show used-in-current-prompt state** — the page shows green **available** /
+   amber **not loaded** badges on each required skill.
+4. **Import / export the required set** — Export fills a textarea with JSON;
+   Import applies a pasted JSON array.
+5. **Grouping & search improvements** — group by source/provider, sort by
+   name/required-first, and a metadata line (source · provider · model/user).
 
-## 2. Agent-side enforcement / verification
-Let the **agent itself** consult the required set before answering a prompt.
-Two sub-ideas:
+## Ideas for later
 
-- Register a dynamic model **tool** (e.g. `harness.registerTool`) named
-  `check_required_skills` that returns which required skills are loaded for the
-  current turn, so the agent can verify them.
-- Or inject a lightweight reminder into the session prompt when the required
-  set is non-empty.
-
-## 3. Show "used in current prompt" state
-Read the current conversation's `<available_skills>` / skill-invocation context
-and highlight which of the marked-required skills are actually active in the
-present prompt.
-
-## 4. Import / export the required set
-Add buttons to copy the required list to JSON and paste it back in, so users can
-share or back it up without durable storage.
-
-## 5. Grouping & search improvements
-- Group skills by source/provider.
-- Show invocation policy (model-invocable vs user-invocable).
-- Sort by name or by "required first".
+- **Prompt injection of the required set.** When the required set is non-empty,
+  inject a short reminder into the session prompt so the agent always knows which
+  skills are mandatory (beyond the opt-in tool call).
+- **Per-skill notes.** Let the user attach a short note to a required skill
+  (e.g. "use the v2 variant").
+- **Cross-session sharing.** Export/import already works; a future step could
+  sync the required set across sessions or workspaces.
+- **Better "used in current prompt" signal.** Today availability is derived from
+  the session catalog; a deeper integration could read the live conversation's
+  `<available_skills>` context to show which are actually active in the present
+  prompt.

@@ -17,10 +17,20 @@ used for your prompts**.
 ## Features
 
 - **See all installed skills** — lists every skill in the current session's
-  catalog with its name and description.
+  catalog with its name, description, source, provider, and invocation policy.
 - **Filter** — a search box narrows the list by name or description.
 - **Mark skills as required** — check a box to flag a skill as "required for my
   prompts"; it gets a blue highlight and a **required** badge.
+- **Durable required set** — the required list persists to
+  `.dsh/skills-manager.json` in the session workspace, so it survives DSH
+  restarts.
+- **Availability state** — each required skill shows a green **available** or
+  amber **not loaded** badge for the current session.
+- **Grouping & sorting** — group by source or provider, and sort by name or
+  required-first.
+- **Import / export** — copy the required list to JSON and paste it back in.
+- **Agent-side enforcement** — registers a `check_required_skills` model tool so
+  the agent can verify which required skills are loaded before answering.
 - **Live counts** — the header shows `N installed · M required`.
 - **Session-aware** — resolves the current session's agent scope, so the list
   reflects exactly what that session's agent can load (not an empty global view).
@@ -32,10 +42,11 @@ Settings → Skills
 ──────────────────────────────────────────────
 Skills Manager                   132 installed · 5 required
 [ Filter skills…                                ]
+[No grouping ▾] [Sort by name ▾] [Export] [Import]
 ☐ accessibility        Design and implement inclusive digital products…
 ☐ api-design           REST API design patterns including resource naming…
 ☑ cordis-plugin-development   Create, modify, debug, or extend dynamic Cordis Plugins…
-    ↳ [required]
+    ↳ [required] [available] · bundled · model
 ☐ systematic-debugging When encountering any bug, test failure…
 ```
 
@@ -83,11 +94,17 @@ Then load the two halves into the DSH authoring flow. The full steps are in
 
 ### RPC surface (Client → Host)
 
-| method         | args                    | returns                       |
-|----------------|-------------------------|-------------------------------|
-| `list-skills`  | `{ sessionId }`         | `[{ name, description }, …]`  |
-| `get-required` | —                       | `[skillName, …]`              |
-| `set-required` | `[skillName, …]`        | `[skillName, …]`              |
+| method            | args                    | returns                                          |
+|-------------------|-------------------------|--------------------------------------------------|
+| `list-skills`     | `{ sessionId }`         | `[{ name, description, source, provider, modelInvocable, userInvocable }, …]` |
+| `get-required`    | `{ sessionId }`         | `[skillName, …]`                                  |
+| `set-required`    | `{ sessionId, names }`  | `[skillName, …]`                                  |
+| `check-required`  | `{ sessionId }`         | `{ required, available, missing }`                |
+| `export-required` | `{ sessionId }`         | JSON string of the required list                  |
+| `import-required` | `{ sessionId, json }`   | `[skillName, …]`                                  |
+
+The host also registers a model tool **`check_required_skills`** so the agent
+itself can verify which required skills are loaded for the current turn.
 
 ---
 
@@ -96,12 +113,12 @@ Then load the two halves into the DSH authoring flow. The full steps are in
 ```
 .
 ├── src/
-│   ├── host.js       # Host half: skills registry read + required-set in memory
+│   ├── host.js       # Host half: skills registry read + durable required-set + enforcement tool
 │   └── client.js     # Client half: Settings page UI (React, no JSX)
 ├── docs/
 │   ├── architecture.md   # How the two planes fit together
 │   ├── loading.md        # How to load this plugin into DSH
-│   └── roadmap.md        # Ideas: durability, agent-side checks, export
+│   └── roadmap.md        # Implemented items + future ideas
 ├── package.json
 ├── README.md
 └── LICENSE
@@ -111,9 +128,9 @@ Then load the two halves into the DSH authoring flow. The full steps are in
 
 ## Notes & limitations
 
-- **In-memory only.** The "required" set lives in the Host process for the
-  life of the activation and is lost on restart. Durable storage is a planned
-  follow-up (see [docs/roadmap.md](docs/roadmap.md)).
+- **Durable required set.** Persisted to `.dsh/skills-manager.json` in the
+  session workspace; it survives DSH restarts. The plugin itself is a dynamic
+  package and must be re-activated after a restart (the required set survives).
 - **Session-scoped.** The list reflects the current session's agent scope.
 - **Plain JS halves.** The sandboxed code is plain JavaScript (no TS/JSX); the
   `.js` exports here are the maintainable source consumed by the authoring flow.
@@ -122,13 +139,10 @@ Then load the two halves into the DSH authoring flow. The full steps are in
 
 ## Roadmap
 
-- Persist the required set (settings namespace or file).
-- Agent-side enforcement: let the model check required skills before answering.
-- Show which required skills are active in the current prompt.
-- Import/export the required set as JSON.
-- Group/sort skills by source and invocation policy.
-
-See [docs/roadmap.md](docs/roadmap.md).
+Implemented: durable required set, agent-side enforcement tool, availability
+state, import/export, and grouping/sorting. Future ideas (prompt injection of the
+required set, per-skill notes, cross-session sync) are in
+[docs/roadmap.md](docs/roadmap.md).
 
 ---
 

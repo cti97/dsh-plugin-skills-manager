@@ -25,14 +25,21 @@ half into the plugin authoring flow. The two halves are:
 ```js
 // Host half
 return {
-  inject: ['agents'],
+  inject: ['agents', 'fs'],
   apply(ctx) {
     const skills = ctx.get('skills')
+    const fs = ctx.get('fs')
     if (skills === undefined) return
-    let required = new Set()
+    // durable required set persisted to .dsh/skills-manager.json
     harness.handle('list-skills', async (args) => { /* … */ })
-    harness.handle('get-required', async () => Array.from(required))
-    harness.handle('set-required', async (names) => { /* … */ })
+    harness.handle('get-required', async (args) => { /* … */ })
+    harness.handle('set-required', async (args) => { /* … */ })
+    harness.handle('check-required', async (args) => { /* … */ })
+    harness.handle('export-required', async (args) => { /* … */ })
+    harness.handle('import-required', async (args) => { /* … */ })
+    // agent-side enforcement tool
+    const checkTool = harness.defineTool({ name: 'check_required_skills', /* … */ })
+    harness.registerTool(ctx, checkTool)
   },
 }
 
