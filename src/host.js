@@ -6,16 +6,17 @@
  * Responsibilities:
  *   1. Reads the live skill registry (`ctx.get('skills')`) for the current
  *      session's agent, so the list reflects exactly what the agent sees.
- *   2. Keeps the "required for prompts" set DURABLY — persisted to
- *      `.dsh/skills-manager.json` in the session workspace via the `fs`
- *      service, so it survives DSH restarts.
+ *   2. Keeps the "required for prompts" set DURABLY — persisted to a
+ *      per-session `.dsh/skills-manager-<sessionId>.json` file in the session
+ *      workspace via the `fs` service, so it survives DSH restarts and does not
+ *      leak across sessions sharing a workspace.
  *   3. Exposes package-private RPC methods the browser half calls:
  *        list-skills      ({ sessionId }) -> [{ name, description, source,
  *                                               provider, modelInvocable,
  *                                               userInvocable }, ...]
  *        get-required     ({ sessionId }) -> [skillName, ...]
  *        set-required     ({ sessionId, names }) -> [skillName, ...]
- *        check-required   ({ sessionId }) -> { required, available, missing }
+ *        check-required   ({ sessionId }) -> { required, loaded, missing }
  *        export-required  ({ sessionId }) -> JSON string
  *        import-required  ({ sessionId, json }) -> [skillName, ...]
  *   4. Registers a model tool `check_required_skills` so the agent itself can
@@ -50,13 +51,20 @@ export default {
       } catch (e) { return undefined }
     }
 
+    // Per-session persistence file so sessions in the same workspace do not
+    // share a required set (Bug 5 fix).
+    function storePath(sessionId) {
+      const safe = String(sessionId).replace(/[^a-zA-Z0-9._-]/g, '_')
+      return '.dsh/skills-manager-' + safe + '.json'
+    }
+
     async function loadRequired(sessionId) {
       if (store.has(sessionId)) return store.get(sessionId)
       const set = new Set()
       const cwd = sessionCwd(sessionId)
       if (cwd && fs) {
         try {
-          const target = await fs.resolve('.dsh/skills-manager.json', { cwd })
+          const target = await fs.resolve(storePath(sessionId), { cwd })
           const info = await fs.stat(target)
           if (info) {
             const text = await fs.readText(target)
@@ -73,7 +81,7 @@ export default {
       const cwd = sessionCwd(sessionId)
       if (cwd && fs) {
         try {
-          const target = await fs.resolve('.dsh/skills-manager.json', { cwd })
+          const target = await fs.resolve(storePath(sessionId), { cwd })
           await fs.writeText(target, JSON.stringify({ required: Array.from(set) }, null, 2))
         } catch (e) { console.error('[Skills Manager] save failed:', e) }
       }
@@ -92,9 +100,34 @@ export default {
         description: String((s && s.description) || ''),
         source: String((s && s.source) || ''),
         provider: String((s && s.provider) || ''),
-        modelInvocable: !!(s && s.invocation && s.invocation.model),
-        userInvocable: !!(s && s.invocation && s.invocation.user),
+        modelInvocable: !!(s && s.invocation && s.invocation.modelInvocable),
+        userInvocable: !!(s && s.invocation && s.invocation.userInvocable),
       }))
+    }
+
+    // Skills actually loaded in the current conversation: user-invoked skills
+    // (skill-invocation message source) and model-invoked skills (skill tool
+    // calls). This is the real "loaded in prompt" signal (Bug 4 fix).
+    function loadedSkillNames(agent) {
+      const names = new Set()
+      try {
+        const messages = agent && agent.session ? agent.session.deriveMessages() : []
+        for (const message of messages) {
+          if (message.source && message.source.kind === 'skill-invocation' && message.source.name) {
+            names.add(String(message.source.name))
+          }
+          const blocks = message.content || []
+          for (const block of blocks) {
+            if (block && block.type === 'tool-call' && block.name === 'skill') {
+              try {
+                const args = JSON.parse(block.arguments || '{}')
+                if (args && args.name) names.add(String(args.name))
+              } catch (e) { /* ignore malformed args */ }
+            }
+          }
+        }
+      } catch (e) { console.error('[Skills Manager] loadedSkillNames failed:', e) }
+      return names
     }
 
     harness.handle('list-skills', async (args) => {
@@ -124,18 +157,18 @@ export default {
       return Array.from(set)
     })
 
-    // Which required skills are currently available (loaded) for the session.
+    // Which required skills are actually loaded in the current conversation.
     harness.handle('check-required', async (args) => {
       const sessionId = args && typeof args === 'object' ? args.sessionId : undefined
-      if (!sessionId) return { required: [], available: [], missing: [] }
+      if (!sessionId) return { required: [], loaded: [], missing: [] }
       const set = await loadRequired(sessionId)
       const required = Array.from(set)
-      if (required.length === 0) return { required: [], available: [], missing: [] }
-      const list = await listFor(sessionId)
-      const names = new Set(list.map((s) => s.name))
-      const available = required.filter((n) => names.has(n))
-      const missing = required.filter((n) => !names.has(n))
-      return { required, available, missing }
+      if (required.length === 0) return { required: [], loaded: [], missing: [] }
+      const agent = ctx.agents.get(String(sessionId))
+      const loaded = loadedSkillNames(agent)
+      const loadedList = required.filter((n) => loaded.has(n))
+      const missing = required.filter((n) => !loaded.has(n))
+      return { required, loaded: loadedList, missing }
     })
 
     harness.handle('export-required', async (args) => {
@@ -163,14 +196,14 @@ export default {
     // skills are loaded for the current turn. exec.agent is the reliable scope. ----
     const checkTool = harness.defineTool({
       name: 'check_required_skills',
-      description: 'Check which skills marked as required for this session are currently loaded and available. Returns the required list plus which are available and which are missing. Call before answering when required skills matter.',
+      description: 'Check which skills marked as required for this session are currently loaded in the conversation. Returns the required list plus which are loaded and which are missing. Call before answering when required skills matter.',
       parameters: {},
       output: {
         schema: {
           type: 'object',
           properties: {
             required: { type: 'array', items: { type: 'string' } },
-            available: { type: 'array', items: { type: 'string' } },
+            loaded: { type: 'array', items: { type: 'string' } },
             missing: { type: 'array', items: { type: 'string' } },
           },
           additionalProperties: false,
@@ -182,15 +215,14 @@ export default {
       async execute(args, exec) {
         const agent = exec && exec.agent
         const sessionId = agent && agent.sessionId
-        if (!sessionId) return { required: [], available: [], missing: [] }
+        if (!sessionId) return { required: [], loaded: [], missing: [] }
         const set = await loadRequired(sessionId)
         const required = Array.from(set)
-        if (required.length === 0) return { required: [], available: [], missing: [] }
-        const list = await skills.list({ scope: agent })
-        const names = new Set(list.map((s) => String((s && s.name) || '')))
-        const available = required.filter((n) => names.has(n))
-        const missing = required.filter((n) => !names.has(n))
-        return { required, available, missing }
+        if (required.length === 0) return { required: [], loaded: [], missing: [] }
+        const loaded = loadedSkillNames(agent)
+        const loadedList = required.filter((n) => loaded.has(n))
+        const missing = required.filter((n) => !loaded.has(n))
+        return { required, loaded: loadedList, missing }
       },
     })
     harness.registerTool(ctx, checkTool)

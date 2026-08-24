@@ -47,7 +47,7 @@ the exact mechanism the built-in `skill` tool uses to produce the catalog.
 | `list-skills`     | `{ sessionId }`         | `[{ name, description, source, provider, modelInvocable, userInvocable }, ...]` |
 | `get-required`    | `{ sessionId }`         | `[skillName, ...]`                                |
 | `set-required`    | `{ sessionId, names }`  | `[skillName, ...]`                                |
-| `check-required`  | `{ sessionId }`         | `{ required, available, missing }`                |
+| `check-required`  | `{ sessionId }`         | `{ required, loaded, missing }`                   |
 | `export-required` | `{ sessionId }`         | JSON string of the required list                  |
 | `import-required` | `{ sessionId, json }`   | `[skillName, ...]`                                |
 
@@ -59,11 +59,21 @@ which required skills are loaded for the current turn. It resolves the scope
 from `exec.agent` (the reliable scope inside a tool call) rather than the
 initiator, which is undefined in host RPC handlers.
 
+## "Loaded" vs "available"
+
+`check-required` (and the tool) report which required skills are **actually
+loaded in the current conversation**, not merely present in the catalog. The
+host derives this from `agent.session.deriveMessages()`: it scans for
+`skill-invocation` message sources (user-invoked skills) and `skill` tool-call
+blocks (model-invoked skills). A required skill that has not been loaded yet
+shows as "not loaded".
+
 ## Lifecycle & persistence
 
-- **Durable.** The "required" set is persisted to
-  `.dsh/skills-manager.json` in the session workspace via the `fs` service, so
-  it survives DSH restarts. It is loaded lazily on first read and written on
+- **Durable & per-session.** The "required" set is persisted to a per-session
+  file `.dsh/skills-manager-<sessionId>.json` in the session workspace via the
+  `fs` service, so it survives DSH restarts and does not leak across sessions
+  that share a workspace. It is loaded lazily on first read and written on
   every change.
 - **Dynamic.** The plugin itself is a dynamic package: it does not survive a DSH
   restart and must be re-activated (the persisted required set does survive).

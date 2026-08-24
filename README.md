@@ -21,11 +21,12 @@ used for your prompts**.
 - **Filter** — a search box narrows the list by name or description.
 - **Mark skills as required** — check a box to flag a skill as "required for my
   prompts"; it gets a blue highlight and a **required** badge.
-- **Durable required set** — the required list persists to
-  `.dsh/skills-manager.json` in the session workspace, so it survives DSH
-  restarts.
-- **Availability state** — each required skill shows a green **available** or
-  amber **not loaded** badge for the current session.
+- **Durable required set** — the required list persists to a per-session
+  `.dsh/skills-manager-<sessionId>.json` in the session workspace, so it survives
+  DSH restarts and stays isolated per session.
+- **Loaded state** — each required skill shows a green **loaded** or amber
+  **not loaded** badge, derived from the live conversation (which skills were
+  actually invoked), not just catalog membership.
 - **Grouping & sorting** — group by source or provider, and sort by name or
   required-first.
 - **Import / export** — copy the required list to JSON and paste it back in.
@@ -46,7 +47,7 @@ Skills Manager                   132 installed · 5 required
 ☐ accessibility        Design and implement inclusive digital products…
 ☐ api-design           REST API design patterns including resource naming…
 ☑ cordis-plugin-development   Create, modify, debug, or extend dynamic Cordis Plugins…
-    ↳ [required] [available] · bundled · model
+    ↳ [required] [loaded] · bundled · model
 ☐ systematic-debugging When encountering any bug, test failure…
 ```
 
@@ -99,7 +100,7 @@ Then load the two halves into the DSH authoring flow. The full steps are in
 | `list-skills`     | `{ sessionId }`         | `[{ name, description, source, provider, modelInvocable, userInvocable }, …]` |
 | `get-required`    | `{ sessionId }`         | `[skillName, …]`                                  |
 | `set-required`    | `{ sessionId, names }`  | `[skillName, …]`                                  |
-| `check-required`  | `{ sessionId }`         | `{ required, available, missing }`                |
+| `check-required`  | `{ sessionId }`         | `{ required, loaded, missing }`                   |
 | `export-required` | `{ sessionId }`         | JSON string of the required list                  |
 | `import-required` | `{ sessionId, json }`   | `[skillName, …]`                                  |
 
@@ -128,8 +129,9 @@ itself can verify which required skills are loaded for the current turn.
 
 ## Notes & limitations
 
-- **Durable required set.** Persisted to `.dsh/skills-manager.json` in the
-  session workspace; it survives DSH restarts. The plugin itself is a dynamic
+- **Durable required set.** Persisted to a per-session
+  `.dsh/skills-manager-<sessionId>.json` in the session workspace; it survives
+  DSH restarts and stays isolated per session. The plugin itself is a dynamic
   package and must be re-activated after a restart (the required set survives).
 - **Session-scoped.** The list reflects the current session's agent scope.
 - **Plain JS halves.** The sandboxed code is plain JavaScript (no TS/JSX); the
@@ -139,8 +141,8 @@ itself can verify which required skills are loaded for the current turn.
 
 ## Roadmap
 
-Implemented: durable required set, agent-side enforcement tool, availability
-state, import/export, and grouping/sorting. Future ideas (prompt injection of the
+Implemented: durable required set, agent-side enforcement tool, loaded-state
+badges, import/export, and grouping/sorting. Future ideas (prompt injection of the
 required set, per-skill notes, cross-session sync) are in
 [docs/roadmap.md](docs/roadmap.md).
 

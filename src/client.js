@@ -8,7 +8,7 @@
  *   2. Lists every skill the current session's agent can see, with a filter box.
  *   3. Lets the user check which skills must be used for their prompts, and
  *      persists that set through the host's `set-required` RPC (durable).
- *   4. Shows availability state (available / not loaded) for required skills.
+ *   4. Shows loaded state (loaded / not loaded) for required skills.
  *   5. Grouping (source / provider) and sorting (name / required-first).
  *   6. Import / export the required set as JSON.
  *
@@ -54,7 +54,7 @@ export default {
     function SkillsPage(props) {
       const [skills, setSkills] = React.useState([])
       const [required, setRequired] = React.useState([])
-      const [avail, setAvail] = React.useState([])
+      const [loaded, setLoaded] = React.useState([])
       const [query, setQuery] = React.useState('')
       const [groupBy, setGroupBy] = React.useState('none')
       const [sortBy, setSortBy] = React.useState('name')
@@ -77,7 +77,7 @@ export default {
             if (!alive) return
             setSkills(sk || [])
             setRequired(req || [])
-            setAvail((chk && chk.available) || [])
+            setLoaded((chk && chk.loaded) || [])
             setLoading(false)
           })
           .catch((e) => { if (alive) { setLoading(false); setErr(String(e && e.message || e)) } })
@@ -133,7 +133,7 @@ export default {
 
       const renderItem = (s) => {
         const isReq = required.includes(s.name)
-        const isAvail = avail.includes(s.name)
+        const isLoaded = loaded.includes(s.name)
         return React.createElement('label', {
           key: s.name,
           className: 'skm-item' + (isReq ? ' skm-required' : ''),
@@ -148,8 +148,8 @@ export default {
             React.createElement('div', { className: 'skm-name' },
               s.name,
               isReq ? React.createElement('span', { className: 'skm-badge' }, 'required') : null,
-              isReq && isAvail ? React.createElement('span', { className: 'skm-badge skm-avail' }, 'available') : null,
-              isReq && !isAvail ? React.createElement('span', { className: 'skm-badge skm-miss' }, 'not loaded') : null,
+              isReq && isLoaded ? React.createElement('span', { className: 'skm-badge skm-avail' }, 'loaded') : null,
+              isReq && !isLoaded ? React.createElement('span', { className: 'skm-badge skm-miss' }, 'not loaded') : null,
             ),
             React.createElement('div', { className: 'skm-meta' },
               [s.source, s.provider].filter(Boolean).join(' · ') + (s.modelInvocable ? ' · model' : '') + (s.userInvocable ? ' · user' : ''),
