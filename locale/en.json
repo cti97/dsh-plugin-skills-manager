@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "title": "Skills Manager",
+    "description": "Browse the skills this session can invoke, pin the ones your prompts require, and let the agent verify they are loaded."
+  },
+  "page": {
+    "title": "Skills Manager",
+    "count": "{installed} installed · {required} required",
+    "filter": "Filter skills…",
+    "groupNone": "No grouping",
+    "groupOrigin": "Group by origin",
+    "sortName": "Sort by name",
+    "sortRequired": "Required first",
+    "export": "Export",
+    "import": "Import",
+    "apply": "Apply",
+    "applyHint": "Paste a JSON array of skill names, then Apply.",
+    "loading": "Loading skills…",
+    "empty": "No skills match.",
+    "noSession": "Open a session to see its skills.",
+    "error": "Error: {message}",
+    "required": "required",
+    "verified": "verified",
+    "unverified": "unverified",
+    "model": "model-facing",
+    "userOnly": "user-only",
+    "lastCheck": "last check {time}",
+    "neverChecked": "not verified yet — ask the agent to call check_required_skills",
+    "originUserDsh": "user (~/.dsh/skills)",
+    "originUserAgents": "user (~/.agents/skills)",
+    "originBundled": "bundled with DSH",
+    "originCustom": "custom",
+    "originVirtual": "virtual"
+  }
+}

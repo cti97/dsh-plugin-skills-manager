@@ -23,3 +23,6 @@ Thumbs.db
 dist/
 build/
 coverage/
+
+# Plugin state written into a session workspace by the mounted bundle
+.dsh/

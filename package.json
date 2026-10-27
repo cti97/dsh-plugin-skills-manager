@@ -1,33 +1,50 @@
 {
   "name": "dsh-skills-manager",
-  "version": "1.0.0",
-  "description": "DSH dynamic Cordis plugin: lists every installed skill and lets you mark which skills must be used for your prompts.",
+  "version": "2.0.0",
+  "description": "Settings → Skills page plus a check_required_skills tool: see every skill your session can invoke, pin the ones your prompts require, and let the agent verify they are loaded.",
   "type": "module",
-  "main": "src/host.js",
+  "license": "MIT",
   "exports": {
-    ".": "./src/host.js",
-    "./host": "./src/host.js",
-    "./client": "./src/client.js"
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings-general"
+      ]
+    }
   },
   "files": [
-    "src",
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
     "README.md",
-    "LICENSE",
-    "package-lock.json"
+    "LICENSE"
   ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "check": "node --check index.js && node --check client.js"
+  },
   "keywords": [
     "dsh",
     "deepseek-harness",
     "cordis",
+    "bundle",
     "plugin",
     "skills",
     "agent"
-  ],
-  "license": "MIT",
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "test": "echo \"No test suite yet — see docs/testing.md\" && exit 0"
-  }
+  ]
 }

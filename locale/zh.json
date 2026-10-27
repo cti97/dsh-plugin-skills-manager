@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "title": "技能管理",
+    "description": "浏览当前会话可调用的技能，标记提示中必需的技能，并让代理验证它们已加载。"
+  },
+  "page": {
+    "title": "技能管理",
+    "count": "{installed} 个已安装 · {required} 个必需",
+    "filter": "筛选技能…",
+    "groupNone": "不分组",
+    "groupOrigin": "按来源分组",
+    "sortName": "按名称排序",
+    "sortRequired": "必需的在前",
+    "export": "导出",
+    "import": "导入",
+    "apply": "应用",
+    "applyHint": "粘贴技能名称的 JSON 数组，然后点击应用。",
+    "loading": "正在加载技能…",
+    "empty": "没有匹配的技能。",
+    "noSession": "打开一个会话以查看它的技能。",
+    "error": "错误：{message}",
+    "required": "必需",
+    "verified": "已验证",
+    "unverified": "未验证",
+    "model": "模型可用",
+    "userOnly": "仅用户",
+    "lastCheck": "上次检查 {time}",
+    "neverChecked": "尚未验证 — 让代理调用 check_required_skills",
+    "originUserDsh": "用户 (~/.dsh/skills)",
+    "originUserAgents": "用户 (~/.agents/skills)",
+    "originBundled": "DSH 内置",
+    "originCustom": "自定义",
+    "originVirtual": "虚拟"
+  }
+}

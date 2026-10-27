@@ -1,0 +1,8 @@
+# Bundle patch installed by `plugin_manager` `install_bundle`.
+#
+# One row mounts the Host half: the `check_required_skills` tool and the
+# `/skills-manager` command. The Client half is attached through the
+# package.json `dsh.client` section, not here.
+- insert:
+    - id: skills-manager
+      name: dsh-skills-manager
